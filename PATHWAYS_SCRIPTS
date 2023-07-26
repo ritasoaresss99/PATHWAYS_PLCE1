@@ -1,0 +1,86 @@
+---
+title: "PATHWAYS PLCE1"
+output: html_notebook
+---
+
+#INSTALLATIONS:
+```{r}
+#INSTALL FGSEA:
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("fgsea")
+library(fgsea)
+```
+#1. COMPARE THE ALI5-WT
+
+```{r}
+load("C:/Users/ritas/Desktop/PLC/scripts/ranks_ALI5_vs_WT.Rdata")
+```
+
+
+#A.reactome
+```{r}
+setwd("C:/Users/ritas/Desktop/TEST")
+
+reactome <- gmtPathways("C:/Users/ritas/Desktop/TEST/c2.cp.reactome.v2023.1.Hs.symbols.gmt")
+
+fgseaRes_ALI5_vs_WT<- fgsea(pathways = reactome,
+                  stats    = ranks_ALI5_vs_WT,
+                  minSize  = 15,
+                  maxSize  = 500)
+View(fgseaRes_ALI5_vs_WT)
+
+topPathways_ALI5_vs_WT<- fgseaRes_ALI5_vs_WT[head(order(pval), n=10), pathway]
+View(topPathways_ALI5_vs_WT)
+```
+
+
+#GRAPHICS OF PATHWAYS
+
+#B.HALLMARKS IN CANCER
+
+
+```{r}
+# PATHWAYS ##################
+plot.new()
+plotGseaTable(reactome[topPathways_ALI5_vs_WT], ranks_ALI5_vs_WT, fgseaRes_ALI5_vs_WT, gseaParam=0.8)
+collapsedPathways <- collapsePathways(fgseaRes_ALI5_vs_WT [order(padj)][padj < 0.05], reactome, ranks_ALI5_vs_WT)
+mainPathways <- fgseaRes_ALI5_vs_WT[pathway %in% collapsedPathways$mainPathways][order(-NES), pathway]
+
+plot.new()
+plotGseaTable(reactome[mainPathways[1:10]], ranks_ALI5_vs_WT, fgseaRes_ALI5_vs_WT, gseaParam = 0.8)
+
+plot.new()
+plotGseaTable(reactome[tail(mainPathways, n=10)], ranks_ALI5_vs_WT, fgseaRes_ALI5_vs_WT, gseaParam = 0.8)
+
+down_pathways <- fgseaRes_ALI5_vs_WT[fgseaRes_ALI5_vs_WT$pathway %in% tail(mainPathways, n=7),]
+
+down_pathways <- down_pathways[order(down_pathways$NES, decreasing = T),]
+
+up_pathways <- fgseaRes_ALI5_vs_WT[fgseaRes_ALI5_vs_WT$pathway %in% head(mainPathways, n=10),]
+
+up_pathways <- up_pathways[order(up_pathways$NES, decreasing = T),]
+select_pathways <- rbind(up_pathways,down_pathways)
+plot.new()
+
+#the final graphic of ALI5 VS WT:
+bp <- barplot(select_pathways$NES, cex.names= 1, cex.axis = 1, names.arg = "", xlim=range(pretty(c(min(select_pathways$NES), max(select_pathways$NES)))),
+              horiz = T, col = c(rep("red",10),rep("blue",7)), xlab="Normalized Enrichment Score (NES)")
+text(x=-0.1, y=bp[1:10],gsub("_"," ",sub("REACTOME_","",select_pathways$pathway[1:10])), cex=0.5, adj=1, font=2)
+text(x=0.1, y=bp[11:17],gsub("_"," ",sub("REACTOME_","",select_pathways$pathway[11:17])), cex=0.5, adj=0, font=2)
+
+pdf("ALI5_versus_WT_batch_FGSEA_reactome.pdf")
+bp <- barplot(select_pathways$NES, names.arg = "", 
+              horiz = T, col = c(rep("red",nrow(up_pathways)),rep("blue",nrow(down_pathways))), 
+              xlab="Normalized Enrichment Score (NES)",
+              main = "ALI5 versus WT")
+text(x=-0.1, y=bp[1:nrow(up_pathways)],select_pathways$pathway[1:nrow(up_pathways)], cex=0.7, adj=1)
+text(x=0.1, y=bp[(nrow(up_pathways)+1):(nrow(down_pathways) + nrow(up_pathways))],
+     select_pathways$pathway[(nrow(up_pathways)+1):(nrow(down_pathways) + nrow(up_pathways))], cex=0.7, adj=0)
+dev.off()
+```
+
+#2. COMPARE KATA-WT
+
+#3. COMPARE ALI5-KATA
